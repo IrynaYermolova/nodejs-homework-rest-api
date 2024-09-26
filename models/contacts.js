@@ -1,75 +1,57 @@
+const { v4 } = require("uuid");
 const fs = require("fs/promises");
 const path = require("path");
-const { nanoid } = require("nanoid");
 
-const contactPath = path.join(__dirname, "contacts.json");
+const filePath = path.join(__dirname, "contacts.json");
 
 const listContacts = async () => {
-  try {
-    const contacts = await fs.readFile(contactPath);
-    return JSON.parse(contacts);
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to retrieve contacts.");
-  }
+  const data = await fs.readFile(filePath);
+  const contacts = JSON.parse(data);
+  return contacts;
 };
 
 const getContactById = async (contactId) => {
-  try {
-    const contacts = await listContacts();
-    const contact = contacts.find((contact) => contact.id === contactId);
-    return contact;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to retrieve contact by ID.");
+  const contacts = await listContacts();
+  const result = contacts.find((item) => item.id === contactId);
+  if (!result) {
+    return null;
   }
-};
-
-const addContact = async (body) => {
-  try {
-    const contacts = await listContacts();
-    const newContact = { id: nanoid(), ...body };
-    contacts.push(newContact);
-    await fs.writeFile(contactPath, JSON.stringify(contacts, null, 2));
-    return newContact;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to add contact.");
-  }
+  return result;
 };
 
 const removeContact = async (contactId) => {
-  try {
-    const contacts = await listContacts();
-    const index = contacts.findIndex((item) => item.id === contactId);
-    if (index === -1) {
-      return null;
-    }
-    const result = contacts.splice(index, 1);
-    await fs.writeFile(contactPath, JSON.stringify(contacts, null, 2));
-    return result;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to remove contact.");
+  const contacts = await listContacts();
+  const idx = contacts.findIndex((item) => item.id === contactId);
+
+  if (idx === -1) {
+    return null;
   }
+
+  const newContacts = contacts.filter((_, index) => index !== idx);
+  await fs.writeFile(filePath, JSON.stringify(newContacts));
+  return contacts[idx];
+};
+
+const addContact = async (body) => {
+  const contacts = await listContacts();
+  const newContact = { ...body, id: v4() };
+
+  contacts.push(newContact);
+  await fs.writeFile(filePath, JSON.stringify(contacts));
+  return newContact;
 };
 
 const updateContact = async (contactId, body) => {
-  try {
-    const contacts = await listContacts();
-    const updatedContacts = contacts.map((item) => {
-      if (item.id === contactId) {
-        return { id: item.id, ...body };
-      } else {
-        return item;
-      }
-    });
-    await fs.writeFile(contactPath, JSON.stringify(updatedContacts, null, 2));
-    return updatedContacts;
-  } catch (error) {
-    console.log(error);
-    throw new Error("Failed to update contact.");
+  const contacts = await listContacts();
+  const idx = contacts.findIndex((item) => item.id === contactId);
+
+  if (idx === -1) {
+    return null;
   }
+
+  contacts[idx] = { ...contacts[idx], ...body };
+  await fs.writeFile(filePath, JSON.stringify(contacts));
+  return contacts[idx];
 };
 
 module.exports = {
